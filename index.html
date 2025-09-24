@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Quiz de Mapas Multijugador</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Tipografía y body */
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
+  
+    body {
+      font-family: 'Nunito', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f0f2f5;
+      text-align: center;
+      color: #333;
+    }
+  
+    h1 {
+      margin-top: 10px;
+      font-size: 2em;
+      color: #2c3e50;
+    }
+  
+    h2, h3 {
+      color: #34495e;
+      margin: 10px 0;
+    }
+  
+    /* --- Contenedores --- */
+    .game-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin: 10px;
+      gap: 15px;
+    }
+  
+    .left-panel {
+      flex: 2;
+      min-width: 60%;
+    }
+  
+    .right-panel {
+      flex: 1;
+      min-width: 250px;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 15px;
+      text-align: left;
+      max-height: 500px;
+      overflow-y: auto;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+    }
+  
+    #map {
+      width: 100%;
+      height: 400px;
+      border-radius: 16px;
+      margin-top: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+  
+    .question {
+      margin: 10px 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: #2d3436;
+    }
+  
+    #progress,
+    #result {
+      margin: 10px 0;
+      font-weight: 600;
+      font-size: 16px;
+    }
+  
+    /* Botones estilo gamificado */
+    button {
+      background: linear-gradient(145deg, #6c5ce7, #a29bfe);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 5px 10px rgba(0,0,0,0.15);
+      transition: all 0.2s ease;
+      margin: 10px 5px;
+    }
+  
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+    }
+  
+    button:disabled {
+      background: #b2bec3;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  
+    /* Player box */
+    #playerBox {
+      margin: 15px auto;
+      padding: 15px;
+      max-width: 300px;
+      border-radius: 16px;
+      background: linear-gradient(120deg, #ffeaa7, #fab1a0);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+      text-align: left;
+    }
+  
+    #playerBox p {
+      margin: 0 0 10px;
+      font-weight: 700;
+      color: #2d3436;
+    }
+  
+    #playerList {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+  
+    #playerList li {
+      padding: 8px 12px;
+      margin: 5px 0;
+      background: #fff3e0;
+      border-radius: 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      font-size: 15px;
+    }
+  
+    /* Ranking */
+    .ranking-panel, #rankingHost, #rankingFinal, #ranking {
+      max-height: 40vh;
+      overflow-y: auto;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 16px;
+      background: #dfe6e9;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+    }
+  
+    .playerRank {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      background: #ffffff;
+      border-radius: 12px;
+      font-weight: 600;
+      color: #2d3436;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transition: transform 0.2s;
+    }
+  
+    .playerRank:nth-child(1) { background: #ffeaa7; }
+    .playerRank:nth-child(2) { background: #dfe6e9; }
+    .playerRank:nth-child(3) { background: #fab1a0; }
+  
+    .currentPlayer {
+      border: 2px solid #4CAF50;
+      background: #d4edda;
+      font-weight: bold;
+    }
+  
+    /* Ranking host centrado */
+    #rankingHost {
+      display: block;         
+      margin: 15px auto;
+      max-width: 400px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 10px;
+      background: #f0f4f8;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+  
+    /* Ganador host */
+    #winnerHost {
+      font-size: 2em;
+      font-weight: 800;
+      color: #e17055;
+      margin: 15px 0;
+    }
+  
+    /* Media queries móviles */
+    @media(max-width:768px) {
+      .game-container {
+        flex-direction: column;
+      }
+  
+      .left-panel { width: 100%; }
+      .right-panel { width: 100%; max-height: none; margin-top: 15px; }
+      #map { height: 60vh; }
+      button { font-size: 16px; padding: 10px 20px; }
+    }
+
+  </style>
+  
+</head>
+
+<body>
+  <h1>Vexiguessr</h1>
+
+  <!-- Host -->
+  <div id="hostControls" style="display:none;">
+    <h2>Modo Host</h2>
+    <button id="startGameHost">Restablecer</button>
+    <button id="nextQuestionHost">Siguiente pregunta</button>
+    <button id="endGameHost">Finalizar</button>
+    <p>Pregunta actual: <span id="currentQuestionHost">0</span> / <span id="totalQuestionsHost">0</span></p>
+    <div id="questionTextHost" style="margin:10px 0; font-weight:bold; font-size:18px;">Esperando iniciar la partida...
+    </div>
+    <div id="playerBox">
+      <p id="playerCount">Jugadores conectados: 0</p>
+      <ul id="playerList"></ul>
+    </div>
+    <div id="rankingHost" class="ranking-panel"></div>
+    <div id="winnerHost"></div>
+  </div>
+
+  <!-- Player setup -->
+  <div id="playerSetup">
+    <p>Introduce tu nombre:</p>
+    <input type="text" id="playerName" placeholder="Jugador">
+    <button id="joinGame">Unirse</button>
+  </div>
+
+  <!-- Game -->
+  <div id="game" style="display:none;">
+    <div class="game-container">
+      <div class="left-panel">
+        <div class="question" id="questionText"></div>
+        <p id="progress"></p>
+        <div id="map"></div>
+        <button id="checkAnswer">Comprobar respuesta</button>
+        <p id="result"></p>
+        <div id="ranking" class="ranking-panel"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="finalScreen" style="display:none;">
+    <h2>¡Fin del quiz!</h2>
+    <p id="finalScore"></p>
+    <h3>Ranking final</h3>
+    <div id="rankingFinal" class="ranking-panel"></div>
+  </div>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script type="module">
+    import firebaseConfig from "./firebaseConfig.js";
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let questions = [], currentQuestionIndex = 0, totalScore = 0;
+    let chosenMarker = null, chosenLatLng = null;
+    let playerName = "", timer = null, timeLeft = 20;
+    const questionTime = 20;
+    const isHost = window.location.search.includes("host=1");
+    let answered = false;
+
+    let solutionMarker = null;
+    let solutionLine = null;
+
+    // --- Mapa ---
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    map.on('click', e => {
+      if (chosenMarker) map.removeLayer(chosenMarker);
+      chosenLatLng = e.latlng;
+      chosenMarker = L.marker(chosenLatLng).addTo(map);
+    });
+    window.addEventListener("resize", () => map.invalidateSize());
+
+    // --- Funciones ---
+    function haversine(lat1, lon1, lat2, lon2) {
+      const toRad = x => x * Math.PI / 180;
+      const R = 6371;
+      const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+
+    function showSolutionMarker() {
+      const solutionIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
+      });
+      const q = questions[currentQuestionIndex];
+      if (!q) return;
+
+      // Quitar marcador y línea anteriores si existen
+      if (solutionMarker) {
+        map.removeLayer(solutionMarker);
+        solutionMarker = null;
+      }
+      if (solutionLine) {
+        map.removeLayer(solutionLine);
+        solutionLine = null;
+      }
+      solutionMarker = L.marker([q.lat, q.lng], { icon: solutionIcon })
+        .addTo(map)
+        .bindPopup("Solución correcta", { offset: [0, -20] })
+        .openPopup();
+
+      let bounds;
+      if (chosenLatLng) {
+        solutionLine = L.polyline([[chosenLatLng.lat, chosenLatLng.lng], [q.lat, q.lng]], { color: 'red' }).addTo(map);
+        bounds = L.latLngBounds([chosenLatLng, [q.lat, q.lng]]);
+      } else bounds = L.latLngBounds([[q.lat, q.lng]]);
+
+      map.fitBounds(bounds.pad(0.5));
+    }
+
+    function updateProgress() {
+      if (!questions || questions.length === 0) { document.getElementById("progress").innerText = ""; return; }
+      document.getElementById("progress").innerText = `Pregunta ${currentQuestionIndex + 1} de ${questions.length} | Tiempo restante: ${timeLeft}s`;
+    }
+
+    function startTimer(startedAt, timeLimit) {
+      if (timer) clearInterval(timer);
+      function update() {
+        const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+        timeLeft = Math.max(0, timeLimit - elapsed);
+        updateProgress();
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          checkAnswer(true);
+          showSolutionMarker();
+          const rankContainer = document.getElementById("ranking");
+          showRanking("ranking");
+          rankContainer.style.display = "block";
+          if (!isHost) db.ref("game/status").set("showingRanking");
+        }
+      }
+      update();
+      timer = setInterval(update, 1000);
+    }
+
+    function showRanking(containerId) {
+      db.ref("answers").once("value", snapshot => {
+        const data = snapshot.val() || {};
+        if (!data || Object.keys(data).length === 0) {
+          document.getElementById(containerId).innerHTML = "<p>Aún no hay respuestas.</p>";
+          return;
+        }
+        let scores = {};
+        for (let id in data) {
+          const ans = data[id]; scores[ans.player] = (scores[ans.player] || 0) + ans.score;
+        }
+        let entries = Object.keys(scores).map(p => ({ name: p, score: scores[p] }));
+        entries.sort((a, b) => b.score - a.score);
+        let html = "";
+        entries.forEach((r, idx) => {
+          const isCurrent = r.name === playerName; // aquí detectamos si es el jugador actual
+          html += `
+            <div class="playerRank ${isCurrent ? 'currentPlayer' : ''}">
+              <span>#${idx+1} ${r.name}</span>
+              <span>${r.score} pts</span>
+            </div>
+          `;
+        });
+        const container = document.getElementById(containerId);
+        container.innerHTML = html;
+        container.style.display = "block";
+      });
+    }
+
+    function showFinalRanking() {
+      db.ref("answers").once("value", snapshot => {
+        const data = snapshot.val() || {};
+        let scores = {};
+        for (let id in data) {
+          const ans = data[id];
+          scores[ans.player] = (scores[ans.player] || 0) + ans.score;
+        }
+        let entries = Object.keys(scores).map(p => ({ name: p, score: scores[p] }));
+        entries.sort((a, b) => b.score - a.score);
+
+        let html = "";
+        entries.forEach((r, idx) => {
+          html += `<div class="playerRank">
+                    <span>#${idx+1} ${r.name}</span>
+                    <span>${r.score} pts</span>
+                  </div>`;
+        });
+        document.getElementById("rankingFinal").innerHTML = html;
+        document.getElementById("rankingFinal").style.display = "block";
+
+        // --- Mostrar puesto del jugador ---
+        const playerEntry = entries.findIndex(e => e.name === playerName);
+        if (playerEntry >= 0) {
+          document.getElementById("finalScore").innerText =
+            `Tu puntuación total: ${totalScore} | Tu puesto: #${playerEntry+1}`;
+        }
+      });
+    }
+
+
+    function saveAnswer(distance, score) {
+      db.ref("answers").push({ player: playerName, question: currentQuestionIndex + 1, distance, score, timeLeft, timestamp: Date.now() });
+    }
+
+    function checkAnswer(auto = false) {
+      if (answered) return;
+      answered = true;
+      if (document.getElementById("game").style.display !== "block") return;
+      const q = questions[currentQuestionIndex];
+      if (!chosenLatLng && !auto) { document.getElementById("result").innerText = "Selecciona un punto en el mapa."; return; }
+      const lat = chosenLatLng ? chosenLatLng.lat : 0;
+      const lng = chosenLatLng ? chosenLatLng.lng : 0;
+      const distance = haversine(lat, lng, q.lat, q.lng);
+      const score = Math.max(0, Math.round((1000 - distance) + (timeLeft * 10)));
+      totalScore += score;
+      document.getElementById("result").innerText = `Distancia: ${distance.toFixed(2)} km. Puntuación: ${score}`;
+      saveAnswer(distance, score);
+      showRanking(isHost ? "rankingHost" : "ranking");
+      document.getElementById("checkAnswer").disabled = true;
+    }
+
+    function showQuestion() {
+      const q = questions[currentQuestionIndex];
+      document.getElementById("questionText").innerText = q.text;
+      // Limpiar markers anteriores
+      if (chosenMarker) {
+        map.removeLayer(chosenMarker);
+        chosenMarker = null;
+      }
+      if (solutionMarker) {
+        map.removeLayer(solutionMarker);
+        solutionMarker = null;
+      }
+      if (solutionLine) {
+        map.removeLayer(solutionLine);
+        solutionLine = null;
+      }
+
+      chosenLatLng = null;
+      document.getElementById("checkAnswer").disabled = false;
+      answered = false;
+      updateProgress();
+      document.getElementById("ranking").style.display = "none"; // ocultar ranking mientras se juega
+    }
+
+    // --- HOST ---
+    if (isHost) {
+      document.getElementById("hostControls").style.display = "block";
+      document.getElementById("playerSetup").style.display = "none";
+
+      document.getElementById("startGameHost").addEventListener("click", () => {
+        db.ref("answers").set(null);
+        db.ref("players").set(null);
+        db.ref("game").set({ currentQuestion: 1, startedAt: null, timeLimit: questionTime, status: "waiting" });
+        showRanking("rankingHost");
+      });
+
+      document.getElementById("nextQuestionHost").addEventListener("click", () => {
+        if (currentQuestionIndex < questions.length) {
+          currentQuestionIndex++;
+          db.ref("game").update({ 
+            currentQuestion: currentQuestionIndex, 
+            startedAt: Date.now(), 
+            timeLimit: questionTime, 
+            status: "playing" 
+          });
+          const q = questions[currentQuestionIndex - 1];
+          document.getElementById("questionTextHost").innerText = q.text;
+        } else db.ref("game/status").set("finished");
+      });
+
+      document.getElementById("endGameHost").addEventListener("click", () => { 
+        db.ref("game/status").set("finished"); 
+        showRanking("rankingHost"); 
+      });
+      db.ref("answers").on("value", () => showRanking("rankingHost"));
+
+      db.ref("players").on("value", snapshot => {
+        const players = snapshot.val() || {};
+        const names = Object.values(players).map(p => p.name);
+        const listHtml = names.length > 0 ? `<ul>${names.map(n => `<li>${n}</li>`).join("")}</ul>` : "<p>No hay jugadores conectados todavía</p>";
+        document.getElementById("playerList").innerHTML = listHtml;
+        document.getElementById("playerCount").innerText = `Jugadores conectados: ${names.length}`;
+      });
+
+      db.ref("game/currentQuestion").on("value", snapshot => {
+        const q = snapshot.val() || 0;
+        document.getElementById("currentQuestionHost").innerText = q;
+        document.getElementById("totalQuestionsHost").innerText = questions.length;
+      });
+
+      db.ref("game").on("value", snapshot => {
+        const game = snapshot.val();
+        if (!game) return;
+        document.getElementById("playerList").style.display = (game.status === "waiting") ? "block" : "none";
+
+        if (game.status === "finished" && isHost) {
+          db.ref("answers").once("value", snapshot => {
+            const data = snapshot.val() || {};
+            let scores = {};
+            for (let id in data) {
+              const ans = data[id];
+              scores[ans.player] = (scores[ans.player] || 0) + ans.score;
+            }
+            let entries = Object.keys(scores).map(p => ({ name: p, score: scores[p] }));
+            entries.sort((a,b) => b.score - a.score);
+            if (entries.length > 0) {
+              const winner = entries[0];
+              alert(`¡Ganador: ${winner.name} con ${winner.score} puntos!`);
+              // Opcional: mostrar en pantalla grande
+              document.getElementById("winnerHost").innerText = `🏆 Ganador: ${winner.name} 🏆`;
+            }
+          });
+        }
+      });
+    }
+
+    // --- PLAYER ---
+    else {
+      document.getElementById("joinGame").addEventListener("click", () => {
+        playerName = document.getElementById("playerName").value.trim();
+        if (!playerName) { alert("Introduce un nombre para jugar."); return; }
+        const playerRef = db.ref("players").push();
+        playerRef.set({ name: playerName, joinedAt: Date.now() });
+        playerRef.onDisconnect().remove();
+        document.getElementById("playerSetup").style.display = "none";
+        document.getElementById("game").style.display = "block";
+        map.invalidateSize();
+      });
+
+      db.ref("game").on("value", snapshot => {
+        const game = snapshot.val();
+        if (!game) return;
+        if (game.status === "waiting") {
+          document.getElementById("questionText").innerText = "Esperando la siguiente pregunta...";
+          document.getElementById("progress").innerText = "";
+          document.getElementById("ranking").style.display = "none";
+        } else if (game.status === "playing") {
+          currentQuestionIndex = game.currentQuestion - 1;
+          showQuestion();
+          startTimer(game.startedAt, game.timeLimit);
+        } else if (game.status === "showingRanking") {
+          showRanking("ranking");
+        } else if (game.status === "finished") {
+          document.getElementById("game").style.display = "none";
+          document.getElementById("finalScreen").style.display = "block";
+          document.getElementById("finalScore").innerText = `Tu puntuación total: ${totalScore}`;
+          showFinalRanking();
+        }
+      });
+
+      document.getElementById("checkAnswer").addEventListener("click", () => checkAnswer(false));
+    }
+
+    // --- Cargar preguntas ---
+    fetch("preguntas.json")
+      .then(res => res.json())
+      .then(data => questions = data)
+      .catch(err => console.error("Error cargando preguntas:", err));
+
+  </script>
+</body>
+
+</html>
