@@ -62,7 +62,7 @@
     .map-container {
       position: relative;
       width: 100%;
-      height: 70vh; /* mapa ocupa la mayoría de la pantalla */
+      height: calc(90vh - 20px); /* máximo espacio de la ventana */
     }
 
     #map {
@@ -72,45 +72,66 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
-    #checkAnswer {
+    /* Overlay de pregunta + botón */
+    .overlay-top {
       position: absolute;
-      bottom: 20px;
+      top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 1000;
+      z-index: 1001;
+      background: rgba(255,255,255,0.9);
+      border-radius: 12px;
+      padding: 6px 10px;
+      max-width: 95%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-  
-    .question {
-      margin: 5px 0;
-      font-size: 20px;
-      font-weight: 600;
-      color: #2d3436;
+
+
+    .overlay-top .question,
+    .overlay-top #questionProgress,
+    .overlay-top #progress {
+      pointer-events: auto;
     }
-  
-    #progress,
-    #result {
-      margin: 10px 0;
-      font-weight: 600;
-      font-size: 16px;
+
+    
+    /* Botón dentro del overlay */
+    #checkAnswer {
+      position: relative; /* ya no absolute */
+      margin-top: 8px;
+      width: 100%;
+      max-width: 250px;
+      font-size: 14px;
+      padding: 8px 20px;
+      border-radius: 10px;
+      box-shadow: 0 5px 10px rgba(0,0,0,0.15);
     }
+
+    #checkAnswer:hover { transform: translateY(-2px); }
+    #checkAnswer:disabled { background: #b2bec3; cursor: not-allowed; box-shadow: none; }
+
+    .question { font-weight: 600; color: #2d3436; font-size: 20px; margin: 0; }
+
+    #progress {
+      font-size: 22px;
+      font-weight: bold;
+      color: #d32f2f;
+      margin: 5px auto;
+      padding: 6px 12px;
+      background: #ffebee;
+      border: 2px solid #d32f2f;
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    
 
     #questionProgress {
       font-size: 16px;
       font-weight: 500;
       margin: 5px 0;
       color: #555;
-    }
-
-    #progress {
-      font-size: 22px;
-      font-weight: bold;
-      color: #d32f2f;
-      margin: 10px 0;
-      padding: 6px 12px;
-      background: #ffebee;
-      border: 2px solid #d32f2f;
-      border-radius: 8px;
-      display: inline-block;
     }
 
     @keyframes blink {
@@ -120,6 +141,10 @@
 
     .blink {
       animation: blink 1s infinite;
+    }
+
+    #result, #ranking {
+      margin-top: 15px;
     }
   
     /* Botones estilo gamificado */
@@ -229,13 +254,33 @@
     }
 
     #result {
-      margin-top: 10px;
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1002;
+      background: rgba(255,255,255,0.95);
+      padding: 8px 12px;
+      border-radius: 12px 12px 0 0;
+      max-width: 90%;
       font-weight: bold;
       font-size: 16px;
     }
 
+    /* Ranking que puede hacer scroll */
     #ranking {
-      margin-top: 10px;
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 95%;
+      max-height: calc(50px * 3 + 16px); /* 3 registros + padding/margen */
+      overflow-y: auto;
+      background: rgba(255,255,255,0.95);
+      border-radius: 12px 12px 0 0;
+      padding: 8px 12px;
+      z-index: 1001;
+      display: none; /* solo se muestra cuando hay ranking */
     }
 
     /* Ganador host */
@@ -254,10 +299,12 @@
   
       .left-panel { width: 100%; }
       .right-panel { width: 100%; max-height: none; margin-top: 15px; }
-      #map { height: 60vh; }
-      button { font-size: 16px; padding: 10px 20px; }
-      h1 { margin-bottom: 5px; }
-      .question { margin: 5px 0; }
+      /*#map { height: 60vh; }*/
+      /*button { font-size: 16px; padding: 10px 20px; }*/
+      
+      #checkAnswer { width: 80%; font-size: 14px; padding: 10px; }
+      .overlay-top { width: 95%; }
+      .overlay-top .question { font-size: 18px; }
     }
 
   </style>
@@ -295,13 +342,19 @@
   <div id="game" style="display:none;">
     <div class="game-container">
       <div class="left-panel">
-        <div class="question" id="questionText"></div>
-        <div id="questionProgress"></div>
-        <div id="progress" style="display:none;"></div>
         <div class="map-container">
           <div id="map"></div>
-          <button id="checkAnswer">Comprobar respuesta</button>
+
+          <div class="overlay-top">
+            <div class="question" id="questionText"></div>
+            <div id="questionProgress"></div>
+            <div id="progress" style="display:none;"></div>
+            <button id="checkAnswer">Comprobar respuesta</button>
+
+          </div>
+
         </div>
+
         <p id="result"></p>
         <div id="ranking" class="ranking-panel"></div>
       </div>
