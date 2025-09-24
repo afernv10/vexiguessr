@@ -20,7 +20,8 @@
     }
   
     h1 {
-      margin-top: 10px;
+      margin-top: 5px;
+      margin-bottom: 5px;
       font-size: 2em;
       color: #2c3e50;
     }
@@ -37,11 +38,13 @@
       justify-content: space-between;
       margin: 10px;
       gap: 15px;
+      align-items: flex-start;
     }
   
     .left-panel {
       flex: 2;
       min-width: 60%;
+      position: relative; /* para que el botón absoluto se ubique relativo a este panel */
     }
   
     .right-panel {
@@ -56,16 +59,29 @@
       box-shadow: 0 6px 15px rgba(0,0,0,0.1);
     }
   
+    .map-container {
+      position: relative;
+      width: 100%;
+      height: 70vh; /* mapa ocupa la mayoría de la pantalla */
+    }
+
     #map {
       width: 100%;
-      height: 400px;
+      height: 100%;
       border-radius: 16px;
-      margin-top: 10px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    #checkAnswer {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
     }
   
     .question {
-      margin: 10px 0;
+      margin: 5px 0;
       font-size: 20px;
       font-weight: 600;
       color: #2d3436;
@@ -76,6 +92,34 @@
       margin: 10px 0;
       font-weight: 600;
       font-size: 16px;
+    }
+
+    #questionProgress {
+      font-size: 16px;
+      font-weight: 500;
+      margin: 5px 0;
+      color: #555;
+    }
+
+    #progress {
+      font-size: 22px;
+      font-weight: bold;
+      color: #d32f2f;
+      margin: 10px 0;
+      padding: 6px 12px;
+      background: #ffebee;
+      border: 2px solid #d32f2f;
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .blink {
+      animation: blink 1s infinite;
     }
   
     /* Botones estilo gamificado */
@@ -183,7 +227,17 @@
       border-radius: 8px;
       border: 1px solid #ccc;
     }
-  
+
+    #result {
+      margin-top: 10px;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    #ranking {
+      margin-top: 10px;
+    }
+
     /* Ganador host */
     #winnerHost {
       font-size: 2em;
@@ -202,6 +256,8 @@
       .right-panel { width: 100%; max-height: none; margin-top: 15px; }
       #map { height: 60vh; }
       button { font-size: 16px; padding: 10px 20px; }
+      h1 { margin-bottom: 5px; }
+      .question { margin: 5px 0; }
     }
 
   </style>
@@ -240,9 +296,12 @@
     <div class="game-container">
       <div class="left-panel">
         <div class="question" id="questionText"></div>
-        <p id="progress"></p>
-        <div id="map"></div>
-        <button id="checkAnswer">Comprobar respuesta</button>
+        <div id="questionProgress"></div>
+        <div id="progress" style="display:none;"></div>
+        <div class="map-container">
+          <div id="map"></div>
+          <button id="checkAnswer">Comprobar respuesta</button>
+        </div>
         <p id="result"></p>
         <div id="ranking" class="ranking-panel"></div>
       </div>
@@ -270,13 +329,16 @@
 
     let questions = [], currentQuestionIndex = 0, totalScore = 0;
     let chosenMarker = null, chosenLatLng = null;
-    let playerName = "", timer = null, timeLeft = 20;
-    const questionTime = 20;
+    let playerName = "", timer = null, timeLeft = null;
+    let questionTime = 0;
     const isHost = window.location.search.includes("host=1");
     let answered = false;
 
     let solutionMarker = null;
     let solutionLine = null;
+
+    let lastBeepSecond = null; // para que no repita el mismo segundo varias veces
+
 
     // --- Mapa ---
     const map = L.map('map').setView([20, 0], 2);
@@ -333,10 +395,72 @@
       map.fitBounds(bounds.pad(0.5));
     }
 
-    function updateProgress() {
-      if (!questions || questions.length === 0) { document.getElementById("progress").innerText = ""; return; }
-      document.getElementById("progress").innerText = `Pregunta ${currentQuestionIndex + 1} de ${questions.length} | Tiempo restante: ${timeLeft}s`;
+    function playBeep(frequency = 800, duration = 0.2) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      oscillator.type = "sine"; // tono simple
+      oscillator.frequency.setValueAtTime(frequency, ctx.currentTime); // frecuencia (Hz)
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime); // volumen bajito
+
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + duration); // duración
     }
+
+    function updateProgress() {
+      const questionEl = document.getElementById("questionProgress");
+      const timerEl = document.getElementById("progress");
+
+      if (!questions || questions.length === 0 || timeLeft === null) {
+        questionEl.innerText = "";
+        timerEl.innerText = "";
+        timerEl.style.display = "none"; // ocultar completamente
+        timerEl.classList.remove("blink");
+        return;
+      }
+
+      // Mostrar el temporizador
+      timerEl.style.display = "inline-block";
+      // progreso de preguntas
+      questionEl.innerText = `Pregunta ${currentQuestionIndex + 1} de ${questions.length}`;
+
+      // tiempo restante
+      timerEl.textContent = `⏳ ${timeLeft}s`;
+
+      if (timeLeft <= 5) {
+        timerEl.classList.add("blink");
+        timerEl.style.color = "#fff";
+        timerEl.style.background = "#b71c1c";
+        timerEl.style.borderColor = "#7f0000";
+        
+        // reproducir beep solo una vez por segundo
+        if (lastBeepSecond !== timeLeft) {
+          if (timeLeft === 0) {
+            // último beep: más grave y largo
+            playBeep(400, 0.6);
+          } else {
+            // beeps normales
+            playBeep(800, 0.2);
+          }
+          lastBeepSecond = timeLeft;
+        }
+      } else if (timeLeft <= 10) {
+        timerEl.classList.remove("blink");
+        timerEl.style.color = "#fff";
+        timerEl.style.background = "#d32f2f";
+        timerEl.style.borderColor = "#b71c1c";
+      } else {
+        timerEl.classList.remove("blink");
+        timerEl.style.color = "#d32f2f";
+        timerEl.style.background = "#ffebee";
+        timerEl.style.borderColor = "#d32f2f";
+      }
+    }
+
 
     function startTimer(startedAt, timeLimit) {
       if (timer) clearInterval(timer);
@@ -573,10 +697,32 @@
     }
 
     // --- Cargar preguntas ---
-    fetch("preguntas.json")
-      .then(res => res.json())
-      .then(data => questions = data)
-      .catch(err => console.error("Error cargando preguntas:", err));
+    db.ref("questions").once("value")
+      .then(snapshot => {
+        const data = snapshot.val();
+        if (!data) {
+          console.error("No hay preguntas en la base de datos");
+          return;
+        }
+        // Convertir objeto a array ordenado por clave
+        questions = Object.keys(data).sort().map(key => data[key]);
+        if (isHost) {
+          document.getElementById("totalQuestionsHost").innerText = questions.length;
+        }
+        //console.log("Preguntas cargadas:", questions);
+      })
+      .catch(err => console.error("Error cargando preguntas desde Firebase:", err));
+    
+    // Cargar tiempo de las preguntas
+    db.ref("config/questionTime").once("value")
+      .then(snapshot => {
+        const val = snapshot.val();
+        if (val) {
+          questionTime = val;
+          console.log("Tiempo de pregunta cargado desde Firebase:", questionTime);
+        }
+      })
+      .catch(err => console.error("Error cargando questionTime:", err));
 
   </script>
 </body>
