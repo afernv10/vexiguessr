@@ -527,7 +527,7 @@
           checkAnswer(true);
           showSolutionMarker();
           const rankContainer = document.getElementById("ranking");
-          showRanking("ranking");
+          showRanking(isHost ? "rankingHost" : "ranking");
           rankContainer.style.display = "block";
           if (!isHost) db.ref("game/status").set("showingRanking");
         }
@@ -670,7 +670,7 @@
         db.ref("game/status").set("finished"); 
         showRanking("rankingHost"); 
       });
-      db.ref("answers").on("value", () => showRanking("rankingHost"));
+      //db.ref("answers").on("value", () => showRanking("rankingHost"));
 
       db.ref("players").on("value", snapshot => {
         const players = snapshot.val() || {};
