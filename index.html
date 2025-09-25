@@ -691,7 +691,9 @@
         if (!game) return;
         document.getElementById("playerList").style.display = (game.status === "waiting") ? "block" : "none";
 
-        if (game.status === "finished" && isHost) {
+        if (game.status === "showingRanking" && isHost){
+          showRanking("rankingHost");
+        } else if (game.status === "finished" && isHost) {
           db.ref("answers").once("value", snapshot => {
             const data = snapshot.val() || {};
             let scores = {};
@@ -738,7 +740,6 @@
           startTimer(game.startedAt, game.timeLimit);
         } else if (game.status === "showingRanking") {
           showRanking("ranking");
-          showRanking("rankingHost");
         } else if (game.status === "finished") {
           document.getElementById("game").style.display = "none";
           document.getElementById("finalScreen").style.display = "block";
