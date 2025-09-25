@@ -527,7 +527,7 @@
           checkAnswer(true);
           showSolutionMarker();
           const rankContainer = document.getElementById("ranking");
-          showRanking(isHost ? "rankingHost" : "ranking");
+          showRanking("ranking");
           rankContainer.style.display = "block";
           if (!isHost) db.ref("game/status").set("showingRanking");
         }
@@ -738,6 +738,7 @@
           startTimer(game.startedAt, game.timeLimit);
         } else if (game.status === "showingRanking") {
           showRanking("ranking");
+          showRanking("rankingHost");
         } else if (game.status === "finished") {
           document.getElementById("game").style.display = "none";
           document.getElementById("finalScreen").style.display = "block";
