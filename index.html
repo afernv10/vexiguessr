@@ -400,6 +400,7 @@
     }).addTo(map);
 
     map.on('click', e => {
+      if (answered) return; // no permitir más clics si ya contestó
       if (chosenMarker) map.removeLayer(chosenMarker);
       chosenLatLng = e.latlng;
       chosenMarker = L.marker(chosenLatLng).addTo(map);
@@ -612,7 +613,6 @@
       totalScore += score;
       document.getElementById("result").innerText = `Distancia: ${distance.toFixed(2)} km. Puntuación: ${score}`;
       saveAnswer(distance, score);
-      showRanking(isHost ? "rankingHost" : "ranking");
       document.getElementById("checkAnswer").disabled = true;
     }
 
